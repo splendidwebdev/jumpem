@@ -46,7 +46,7 @@
         const ctx = canvas.getContext("2d");
         const restart_btn = document.querySelector("#rst");
         const stb = document.querySelector("#stb");
-        canvas.width = Math.min(420, window.width);
+        canvas.width = Math.min(420, window.innerWidth);
         canvas.height = window.innerHeight / 1.01;
 
         class Platform{
