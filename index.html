@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jump'em</title>
+    <style>
+        *{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body{
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        canvas{
+            border: 1px solid #000;
+        }
+        button{
+            position: absolute;
+            top: 55%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #006fff;
+            padding: 10px;
+            font-size: 1em;
+            border: none;
+            color: #fff;
+        }
+        #rst{
+            display: none;
+        }
+        #stb{
+        }
+    </style>
+</head>
+<body>
+    <button onclick="location.reload()" id="rst">Restart</button>
+    <button onclick="r();" id="stb">Start game</button>
+    <canvas id="c"></canvas>
+    <script>
+        const canvas = document.querySelector("#c");
+        const ctx = canvas.getContext("2d");
+        const restart_btn = document.querySelector("#rst");
+        const stb = document.querySelector("#stb");
+        canvas.width = 420; canvas.height = window.innerHeight / 1.01;
+
+        class Platform{
+            constructor(x, y){
+                this.x = x;
+                this.y = y;
+                this.width = 70;
+                this.height = 8;
+            }
+            draw(){
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+            }
+        }
+
+        class Player{
+            constructor(){
+                this.timer = 10;
+                this.isLive = true;
+                this.inter = 1000;
+                setInterval(() => {
+                    if(this.isLive) this.timer -= 1;
+                },1000);
+                this.width = 20;
+                this.level = 1;
+                this.height = 20;
+                this.x = 0;
+                this.y = 2;
+                this.gravity = 0.6;
+                this.vx = 0;
+                this.vy = 0;
+                this.can_jump = false;
+                this.jump_power = 15;
+                this.keys = [];
+                this.onGround = false;
+                this.platforms = [];
+                this.passed = false;
+                this.changeLevel();
+                window.addEventListener("keydown", (e) => {
+                    if( (e.key === "ArrowUp" || e.key === "ArrowRight" || e.key === "ArrowLeft" || e.key === "a" || e.key === "d" || e.key === "w" || e.key === "A" || e.key === "D" || e.key === "W") && this.keys.indexOf(e.key) === -1) this.keys.push(e.key);
+                });
+                window.addEventListener("keyup", (e) => {
+                    if(this.keys.indexOf(e.key) !== -1) this.keys.splice(this.keys.indexOf(e.key), 1);
+                });
+            }
+            run(){
+                if(this.timer === 0) this.isLive = false;
+                if(this.y <= 0){
+                    this.level += 1;
+                    this.changeLevel();
+                }
+                if(this.y + this.height < canvas.height && !this.onGround) this.vy += this.gravity;
+                if(this.y + this.height > canvas.height) { 
+                    this.vy = 0;
+                    this.y = canvas.height - this.height;
+                    this.can_jump = true;
+                    this.onGround = true;
+                }
+                if((this.keys.includes("ArrowUp") || this.keys.includes("W") || this.keys.includes("w")) && this.can_jump) {
+                    this.vy -= this.jump_power;
+                    this.can_jump = false;
+                    this.onGround = false;
+                }
+                if((this.keys.includes("ArrowLeft") || this.keys.includes("a") || this.keys.includes("A")) && this.vx > -90.9) this.vx -= 0.3;
+                else if((this.keys.includes("ArrowRight") || this.keys.includes("d") || this.keys.includes("D")) && this.vx < 90.9) this.vx += 0.3;
+                else this.vx *= 0.93;
+
+                if(this.x < 0) {
+                    this.x = 0;
+                    this.vx = 0;
+                }
+                if(this.x + this.width > canvas.width) {
+                    this.x = canvas.width - this.width;
+                    this.vx = 0;
+                }
+                if(this.y < 0) this.vy *= -0.9;
+
+                this.x += this.vx;
+                this.y += this.vy;
+                ctx.fillStyle = "#006fff"
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                this.platforms.forEach((platform) => {
+                    if(this.coll(platform)) {
+                        this.onGround = true;
+                        this.can_jump = true;
+                        this.vy = 0;
+                        this.y = platform.y - this.height;
+                    } else {
+                        this.onGround = false;
+                    }
+                    ctx.fillStyle = "#ff3275"
+                    platform.draw();
+                });
+                ctx.fillStyle = "#000";
+                ctx.font = "20px Arial"
+                ctx.fillText(`Time left : ${this.timer}`, 15, canvas.height - 10)
+                ctx.fillText(`Level : ${this.level}`, canvas.width - 100, canvas.height - 10)
+            }
+            changeLevel(){
+                this.passed = true;
+                if(this.platforms.length > 0){
+                    this.timer = 10;
+                    this.x = 0;
+                    this.y = canvas.width - this.height;
+                    this.platforms.length = 0;
+                }
+                for(let i = 0; i < 15 * 100; i += 100){
+                    this.platforms.push(new Platform(Math.floor(Math.random() * (canvas.width - 70) + 70), canvas.height - i))
+                }
+            }
+            coll(platform) {
+    const playerBottom = this.y + this.height;
+    const platformTop = platform.y;
+
+    const isFallingOntoPlatform = this.vy > 0 && playerBottom <= platformTop + this.vy;
+    return this.x < platform.x + platform.width &&
+           this.x + this.width > platform.x &&
+           isFallingOntoPlatform &&
+           playerBottom + 5 > platformTop &&
+           this.y < platform.y + platform.height;
+}
+        }
+        const player = new Player();
+        function r(){
+            stb.style.display = "none";
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.font = "30px Arial";
+            if(!player.isLive) {
+                ctx.fillText("Game Over", canvas.width / 2 - 70, canvas.height / 2 );
+                ctx.fillText(`Level passed : ${player.level}`, canvas.width / 2 - 90, canvas.height / 2 - 40);
+                restart_btn.style.display = "block";
+                cancelAnimationFrame(r);
+            } else {
+            player.run();
+            requestAnimationFrame(r);
+            }
+        }
+    </script>
+</body>
+</html>
